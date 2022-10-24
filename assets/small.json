@@ -1,0 +1,11 @@
+{
+    "tree": {
+        "type": "fuitier",
+        "fruits": [
+            "pomme",
+            "poire",
+            "pêche"
+        ]
+
+    }
+}

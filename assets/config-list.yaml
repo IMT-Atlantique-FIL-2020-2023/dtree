@@ -1,0 +1,43 @@
+# Only breaking one
+# It's because there is no configuration related to a 
+# "List" kind in the template json... Is this normal?
+
+apiVersion: v1
+kind: List
+items:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: prod-db-client-pod
+    labels:
+      name: prod-db-client
+  spec:
+    volumes:
+    - name: secret-volume
+      secret:
+        secretName: prod-db-secret
+    containers:
+    - name: db-client-container
+      image: myClientImage
+      volumeMounts:
+      - name: secret-volume
+        readOnly: true
+        mountPath: "/etc/secret-volume"
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: test-db-client-pod
+    labels:
+      name: test-db-client
+  spec:
+    volumes:
+    - name: secret-volume
+      secret:
+        secretName: test-db-secret
+    containers:
+    - name: db-client-container
+      image: myClientImage
+      volumeMounts:
+      - name: secret-volume
+        readOnly: true
+        mountPath: "/etc/secret-volume"
