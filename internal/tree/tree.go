@@ -52,6 +52,25 @@ func (t Tree) Get(query []string) interface{} {
 	return current
 }
 
+// Query the tree data and return the result object
+func (t *Tree) Set(query []string, value interface{}) {
+	if len(query) > 1 {
+		current := t.data[query[0]]
+
+		if _, ok := current.(Table); !ok {
+			current = Table{} // create if path does not exist
+		}
+
+		stree := From(current)
+		stree.Set(query[1:], value)
+
+		t.data[query[0]] = stree.data
+
+	} else {
+		t.data[query[0]] = value
+	}
+}
+
 // Query the tree data for an array
 func (t Tree) GetArray(query []string) []interface{} {
 
@@ -77,7 +96,7 @@ func (t Tree) For(fn func(name string, tree Tree)) {
 		if table, valid := entry.(Table); valid {
 
 			// Convert it to a tree
-			tree := new(table)
+			tree := New(table)
 
 			// Call the closure
 			fn(name, tree)
@@ -98,7 +117,7 @@ func (t Tree) ForBoth(other Tree, fn func(name string, a_tree Tree, b_tree Tree)
 			if table, valid := other.Get(other_query).(Table); valid {
 
 				// Convert it to a tree
-				b_tree := new(table)
+				b_tree := New(table)
 
 				// Call the closure
 				fn(a_name, a_tree, b_tree)
@@ -107,7 +126,7 @@ func (t Tree) ForBoth(other Tree, fn func(name string, a_tree Tree, b_tree Tree)
 	})
 }
 
-func new(data Table) Tree {
+func New(data Table) Tree {
 	t := Tree{data}
 	return t
 }
@@ -117,7 +136,7 @@ func FromJSON(file string) Tree {
 
 	json.Unmarshal([]byte(file), &data)
 
-	tree := new(data)
+	tree := New(data)
 
 	return tree
 }
@@ -127,7 +146,7 @@ func FromYAML(file string) Tree {
 
 	yaml.Unmarshal([]byte(file), &data)
 
-	tree := new(data)
+	tree := New(data)
 
 	return tree
 }
@@ -151,5 +170,5 @@ func From(obj interface{}) Tree {
 		panic(fmt.Sprintf("The given interface could not be resolved into a tree:\n%v", obj))
 	}
 
-	return new(obj_table)
+	return New(obj_table)
 }

@@ -1,6 +1,7 @@
 # DTree
 
-## Materials 
+## Materials
+
 - Links Kubernetes:
     + Kubernetes JSON file: https://github.com/instrumenta/kubernetes-json-schema/blob/master/v1.18.0/_definitions.json
     + Kubernetes Namespace: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
@@ -10,6 +11,22 @@
 - User configs:
     + YAML for a pod: https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-files-from-a-pod
     + YAML for a deployment: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+## Commands
+
+```
+> dtree make -h
+Generate the dependancy tree for the given .yaml config and .json struct
+
+Usage:
+  dtree make [flags]
+
+Flags:
+  -c, --config string     The yaml config file (default "./config.yaml")
+  -f, --format string     The format of the output (config, template or tree) (default "tree")
+  -h, --help              help for make
+  -t, --template string   The template definition file (default "./template.json")
+```
 
 ## Example
 
@@ -129,11 +146,48 @@ Existing references in template:
 
 Found in Config: `None`
 
-### STOP
+**STOP**
 
-results:
- * `io.k8s.api.core.v1.PodSpec.properties.containers`
- * `io.k8s.api.core.v1.Container.properties.name`
- * `io.k8s.api.core.v1.Volume.properties.name`
- * `io.k8s.api.core.v1.VolumeMount.properties.name`
- * `io.k8s.api.core.v1.VolumeMount.properties.mountPath`
+### Outputs
+
+Template: `dtree make -f "template"`
+
+```
+Required fields for the given configuration: 
+ * io.k8s.api.core.v1.PodSpec.properties.containers   
+ * io.k8s.api.core.v1.Container.properties.name       
+ * io.k8s.api.core.v1.VolumeMount.properties.name     
+ * io.k8s.api.core.v1.VolumeMount.properties.mountPath
+ * io.k8s.api.core.v1.Volume.properties.name
+```
+
+Config: `dtree make -f "config"`
+
+```
+Required fields for the given configuration: 
+ * .spec.containers = map[items:[map[image:redis name:mypod volumeMounts:map[items:[map[mountPath:/etc/foo name:foo readOnly:true]]]]]]
+ * .spec.volumes.name = foo
+ * .spec.containers.name = mypod
+ * .spec.containers.volumeMounts.name = foo
+ * .spec.containers.volumeMounts.mountPath = /etc/foo
+```
+
+Tree: `dtree make -f "tree"`
+
+```
+Required fields for the given configuration:
+{
+  "spec": {
+    "containers": {
+      "name": "mypod",
+      "volumeMounts": {
+        "mountPath": "/etc/foo",
+        "name": "foo"
+      }
+    },
+    "volumes": {
+      "name": "foo"
+    }
+  }
+}
+```

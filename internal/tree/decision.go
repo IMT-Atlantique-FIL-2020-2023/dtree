@@ -4,8 +4,31 @@ import (
 	"fmt"
 )
 
-// Iterate over config and template to resolve required field
-func Required(config Tree, template Tree) []string {
+// Required field with some usefull datas:
+//   - Config_path: absolute path in the user config data tree
+//   - Template_path: path of the k8s template for this config object
+//   - Layer: current config level, in which a required value was detected
+//   - Label: property name that was found required for this template
+type Requirement struct {
+	Config_path   string
+	Template_path string
+	Layer         Tree
+	Label         string
+}
+
+// References found in the FindReferences function:
+// - Name: reference property name
+// - Path: path of the referenced template
+// - Conf: configuration tree under the prop
+type Reference struct {
+	Name string
+	Path string
+	Conf Tree
+}
+
+// Iterate over config and template to resolve required field,
+// return an array of each found required field as a Requirement.
+func Required(config Tree, template Tree) []Requirement {
 
 	// Step 1: Enter the root of the definitions tree
 	root := []string{"definitions"}
@@ -23,10 +46,9 @@ func Required(config Tree, template Tree) []string {
 	definition := definitions.Get([]string{entry}) // find the entry template
 
 	// Step 3: recursively traverse the tree and mark required fields
-
 	definition_tree := From(definition)
-	return RecursiveTraversal(entry, config, definition_tree, definitions)
 
+	return RecursiveTraversal("", entry, config, definition_tree, definitions)
 }
 
 // To identify the entry point from the config file
@@ -64,8 +86,9 @@ func EntryPoints(template Tree) map[string]string {
 
 // Recursively iterate over referenced dependancies in the template
 // and find every required field.
-func RecursiveTraversal(path string, config Tree, template Tree, definitions Tree) []string {
-	required := []string{}
+func RecursiveTraversal(config_path string, template_path string, config Tree, template Tree, definitions Tree) []Requirement {
+
+	required := []Requirement{}
 
 	required_query := []string{"required"}
 	props_query := []string{"properties"}
@@ -75,8 +98,8 @@ func RecursiveTraversal(path string, config Tree, template Tree, definitions Tre
 	if template.Has(required_query) {
 		req := template.GetArray(required_query)
 
-		for _, value := range req {
-			required = append(required, path+".properties."+fmt.Sprint(value))
+		for _, label := range req {
+			required = append(required, Requirement{config_path, template_path, config, fmt.Sprint(label)})
 		}
 	}
 
@@ -93,10 +116,14 @@ func RecursiveTraversal(path string, config Tree, template Tree, definitions Tre
 
 	for _, reference := range references {
 
+		sub_name := reference.Name
+		sub_path := reference.Path
+		sub_conf := reference.Conf
+
 		// Find the ressource from the template definitions
-		name_query := []string{reference.name}
+		name_query := []string{sub_path}
 		if !definitions.Has(name_query) {
-			panic(fmt.Sprintf("The reference name was not found in the template definitions '%s'", reference.name))
+			panic(fmt.Sprintf("The reference name was not found in the template definitions '%s'", sub_path))
 		}
 
 		definition := From(definitions.Get(name_query))
@@ -104,9 +131,6 @@ func RecursiveTraversal(path string, config Tree, template Tree, definitions Tre
 		// If config is an array, do a recursive traversal for the first element
 		// TODO: do we have to check for each sub elem? For max required ?
 		// Or even do the summation of all required fields to expand ???
-
-		sub_conf := reference.sub_conf
-		sub_name := reference.name
 
 		if sub_conf.Has(items_query) {
 			items := sub_conf.GetArray(items_query)
@@ -120,18 +144,12 @@ func RecursiveTraversal(path string, config Tree, template Tree, definitions Tre
 		}
 
 		// Recursive call
-		sub_required := RecursiveTraversal(sub_name, sub_conf, definition, definitions)
+		sub_required := RecursiveTraversal(config_path+"."+sub_name, sub_path, sub_conf, definition, definitions)
 
-		// Add values to the current array of required values
 		required = append(required, sub_required...)
 	}
 
 	return required
-}
-
-type Reference = struct {
-	name     string
-	sub_conf Tree
 }
 
 // Recursively explore all fields present in both tree
@@ -168,9 +186,9 @@ func FindReferences(conf Tree, temp Tree) []Reference {
 		if to_search.Has(reference_query) {
 
 			ref := fmt.Sprint(to_search.Get(reference_query)) // $ref are given as '#/definitions/...'
-			name := ref[14:]                                  // extract the ressource name
+			path := ref[14:]                                  // extract the ressource name
 
-			references = append(references, Reference{name, sub_conf})
+			references = append(references, Reference{name, path, sub_conf})
 		}
 	})
 
