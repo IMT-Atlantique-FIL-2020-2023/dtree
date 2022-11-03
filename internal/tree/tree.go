@@ -85,19 +85,25 @@ func (t Tree) For(fn func(name string, tree Tree)) {
 	}
 }
 
-// Parralel iteration over both trees based on this tree props
+// Parallel iteration over both trees based on this tree props
 func (t Tree) ForBoth(other Tree, fn func(name string, a_tree Tree, b_tree Tree)) {
 
 	t.For(func(a_name string, a_tree Tree) {
-		other.For(func(b_name string, b_tree Tree) {
+		other_query := []string{a_name}
 
-			// TODO: if better performances are needed, we can only iterate
-			// over this tree (a) and search for props if they are present
-			// in the the other tree (b)
-			if a_name == b_name {
+		// Check for prop in other tree
+		if other.Has(other_query) {
+
+			// If the prop can also be queried on
+			if table, valid := other.Get(other_query).(Table); valid {
+
+				// Convert it to a tree
+				b_tree := new(table)
+
+				// Call the closure
 				fn(a_name, a_tree, b_tree)
 			}
-		})
+		}
 	})
 }
 
